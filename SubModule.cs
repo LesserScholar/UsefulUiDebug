@@ -84,9 +84,12 @@ namespace UsefulUiDebug
 
                 uiContext.TwoDimensionContext.DrawDebugText("GameStates:");
                 i = 0;
-                foreach (var s in GameStateManager.Current.GameStates)
+                if (GameStateManager.Current != null)
                 {
-                    uiContext.TwoDimensionContext.DrawDebugText(string.Format("{0}) {1}", i++, s.ToString()));
+                    foreach (var s in GameStateManager.Current.GameStates)
+                    {
+                        uiContext.TwoDimensionContext.DrawDebugText(string.Format("{0}) {1}", i++, s.ToString()));
+                    }
                 }
                 uiContext.TwoDimensionContext.DrawDebugText("");
             }
