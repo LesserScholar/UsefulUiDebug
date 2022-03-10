@@ -43,7 +43,7 @@ namespace UsefulUiDebug
             newDebugTick = true;
 
 
-            if (Input.IsKeyReleased(InputKey.F1))
+            if (Input.IsKeyDown(InputKey.LeftShift) && Input.IsKeyReleased(InputKey.F1))
             {
                 UIConfig.DebugModeEnabled = !UIConfig.DebugModeEnabled;
             }
