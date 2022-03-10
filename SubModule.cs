@@ -109,10 +109,7 @@ namespace UsefulUiDebug
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             var beginDebugPanelMethod = AccessTools.Method("TaleWorlds.TwoDimension.TwoDimensionContext:BeginDebugPanel");
-
             var getIdMethod = AccessTools.Method("TaleWorlds.GauntletUI.Widget:get_Id");
-            var debugTextMethod = AccessTools.Method("TaleWorlds.TwoDimension.TwoDimensionContext:DrawDebugText");
-            bool hoverTextPatched = false;
 
             foreach (var instruction in instructions)
             {
@@ -122,9 +119,8 @@ namespace UsefulUiDebug
                 {
                     yield return new CodeInstruction(OpCodes.Ldarg_0);
                     yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(UIContextPatch), nameof(PageTopPatch)));
-                } else if (!hoverTextPatched && instruction.operand == (object)getIdMethod)
+                } else if (instruction.operand == (object)getIdMethod)
                 {
-                    hoverTextPatched = true;
                     yield return new CodeInstruction(OpCodes.Ldarg_0);
                     yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(UIContextPatch), nameof(HoveredWidgetPatch)));
                 }
