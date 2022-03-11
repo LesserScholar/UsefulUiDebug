@@ -1,18 +1,21 @@
 ﻿using HarmonyLib;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Emit;
 using TaleWorlds.Core;
+using TaleWorlds.Engine;
 using TaleWorlds.Engine.GauntletUI;
 using TaleWorlds.Engine.Screens;
 using TaleWorlds.GauntletUI;
 using TaleWorlds.InputSystem;
 using TaleWorlds.MountAndBlade;
+using TaleWorlds.MountAndBlade.View.Missions;
 
 namespace UsefulUiDebug
 {
     public class SubModule : MBSubModuleBase
     {
-        Harmony harmony = new Harmony("UsefulUiDebug"); 
+        Harmony harmony = new Harmony("UsefulUiDebug");
         protected override void OnSubModuleLoad()
         {
             base.OnSubModuleLoad();
@@ -27,7 +30,7 @@ namespace UsefulUiDebug
             base.OnSubModuleUnloaded();
 
         }
-        
+
         protected override void OnBeforeInitialModuleScreenSetAsRoot()
         {
             base.OnBeforeInitialModuleScreenSetAsRoot();
@@ -51,9 +54,14 @@ namespace UsefulUiDebug
     }
 
     [HarmonyPatch(typeof(UIContext), "UpdateWidgetInformationPanel")]
-    public class UIContextPatch : HarmonyPatch {
+    public class UIContextPatch : HarmonyPatch
+    {
 
         static Dictionary<Widget, (int, string)> rootToMovie = new Dictionary<Widget, (int, string)>();
+        static bool screenManagerLayers = true;
+        static bool gameStates = true;
+        static bool missionBehaviors = false;
+        static bool missionViews = false;
         static void PageTopPatch(UIContext uiContext)
         {
             if (SubModule.newDebugTick)
@@ -62,36 +70,76 @@ namespace UsefulUiDebug
 
                 SubModule.newDebugTick = false;
 
-                uiContext.TwoDimensionContext.DrawDebugText("ScreenManager Layers:");
-                int i = 0;
-                foreach (var l in ScreenManager.SortedLayers)
-                {
-                    string info = "";
+                Imgui.Checkbox("ScreenManager layers", ref screenManagerLayers); Imgui.SameLine(0f, 10f);
+                Imgui.Checkbox("GameStates", ref gameStates); Imgui.SameLine(0f, 10f);
 
-                    if (l is GauntletLayer gauntletLayer)
+                Imgui.Checkbox("Mission Behaviors", ref missionBehaviors); Imgui.SameLine(0f, 10f);
+                Imgui.Checkbox("Mission Views", ref missionViews);
+
+                int i = 0;
+                if (screenManagerLayers)
+                {
+                    uiContext.TwoDimensionContext.DrawDebugText("ScreenManager Layers:");
+                    foreach (var l in ScreenManager.SortedLayers)
                     {
-                        foreach (var movieAndVM in gauntletLayer._moviesAndDatasources)
+                        string info = "";
+
+                        if (l is GauntletLayer gauntletLayer)
                         {
-                            info += string.Format("({0}, {1}) ", movieAndVM.Item1.MovieName, movieAndVM.Item2.GetType().Name);
-                            rootToMovie[movieAndVM.Item1.RootWidget] = (i, movieAndVM.Item1.MovieName);
+                            foreach (var movieAndVM in gauntletLayer._moviesAndDatasources)
+                            {
+                                info += string.Format("({0}, {1}) ", movieAndVM.Item1.MovieName, movieAndVM.Item2.GetType().Name);
+                                rootToMovie[movieAndVM.Item1.RootWidget] = (i, movieAndVM.Item1.MovieName);
+                            }
+                        }
+
+                        uiContext.TwoDimensionContext.DrawDebugText(string.Format("{0}) {1}: {2}", i, l.GetType(), info));
+                        i++;
+                    }
+                    uiContext.TwoDimensionContext.DrawDebugText("");
+                }
+                if (gameStates)
+                {
+                    uiContext.TwoDimensionContext.DrawDebugText("GameStates:");
+                    i = 0;
+                    if (GameStateManager.Current != null)
+                    {
+                        foreach (var s in GameStateManager.Current.GameStates)
+                        {
+                            uiContext.TwoDimensionContext.DrawDebugText(string.Format("{0}) {1}", i++, s.ToString()));
                         }
                     }
-
-                    uiContext.TwoDimensionContext.DrawDebugText(string.Format("{0}) {1}: {2}", i, l.GetType(), info));
-                    i++;
+                    uiContext.TwoDimensionContext.DrawDebugText("");
                 }
-                uiContext.TwoDimensionContext.DrawDebugText("");
-
-                uiContext.TwoDimensionContext.DrawDebugText("GameStates:");
-                i = 0;
-                if (GameStateManager.Current != null)
+                if (missionBehaviors && Mission.Current != null)
                 {
-                    foreach (var s in GameStateManager.Current.GameStates)
+
+                    uiContext.TwoDimensionContext.DrawDebugText("Mission Behaviors:");
+                    i = 0;
+                    foreach (var mb in Mission.Current.MissionBehaviors)
                     {
-                        uiContext.TwoDimensionContext.DrawDebugText(string.Format("{0}) {1}", i++, s.ToString()));
+                        uiContext.TwoDimensionContext.DrawDebugText(string.Format("{0}) {1}", i++, mb.ToString()));
                     }
+
+                    uiContext.TwoDimensionContext.DrawDebugText("");
                 }
-                uiContext.TwoDimensionContext.DrawDebugText("");
+                if (missionViews && Mission.Current != null)
+                {
+                    uiContext.TwoDimensionContext.DrawDebugText("Mission Views:");
+                    var behaviors = Mission.Current.MissionBehaviors;
+                    var views = (from v in behaviors
+                                 where v is MissionView
+                                 orderby ((MissionView)v).ViewOrderPriority
+                                 select v).ToList<MissionBehavior>();
+                    i = 0;
+                    foreach (var mb in views)
+                    {
+                        uiContext.TwoDimensionContext.DrawDebugText(string.Format("{0}) {1}", i++, mb.ToString()));
+                    }
+
+                    uiContext.TwoDimensionContext.DrawDebugText("");
+                }
+
             }
         }
         static void HoveredWidgetPatch(UIContext uiContext)
@@ -105,10 +153,10 @@ namespace UsefulUiDebug
                     return;
                 }
             }
-            
+
             uiContext.TwoDimensionContext.DrawDebugText("Unknown widget source");
         }
-    
+
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             var beginDebugPanelMethod = AccessTools.Method("TaleWorlds.TwoDimension.TwoDimensionContext:BeginDebugPanel");
@@ -122,7 +170,8 @@ namespace UsefulUiDebug
                 {
                     yield return new CodeInstruction(OpCodes.Ldarg_0);
                     yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(UIContextPatch), nameof(PageTopPatch)));
-                } else if (instruction.operand == (object)getIdMethod)
+                }
+                else if (instruction.operand == (object)getIdMethod)
                 {
                     yield return new CodeInstruction(OpCodes.Ldarg_0);
                     yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(UIContextPatch), nameof(HoveredWidgetPatch)));
