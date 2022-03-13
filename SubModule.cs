@@ -60,8 +60,10 @@ namespace UsefulUiDebug
         static Dictionary<Widget, (int, string)> rootToMovie = new Dictionary<Widget, (int, string)>();
         static bool screenManagerLayers = true;
         static bool gameStates = true;
-        static bool missionBehaviors = false;
+
         static bool missionViews = false;
+        static bool missionLogics = false;
+        static bool missionBehaviors = false;
         static void PageTopPatch(UIContext uiContext)
         {
             if (SubModule.newDebugTick)
@@ -73,8 +75,10 @@ namespace UsefulUiDebug
                 Imgui.Checkbox("ScreenManager layers", ref screenManagerLayers); Imgui.SameLine(0f, 10f);
                 Imgui.Checkbox("GameStates", ref gameStates); Imgui.SameLine(0f, 10f);
 
-                Imgui.Checkbox("Mission Behaviors", ref missionBehaviors); Imgui.SameLine(0f, 10f);
-                Imgui.Checkbox("Mission Views", ref missionViews);
+
+                Imgui.Checkbox("Mission Views", ref missionViews); Imgui.SameLine(0f, 10f);
+                Imgui.Checkbox("Mission Logics", ref missionLogics); Imgui.SameLine(0f, 10f);
+                Imgui.Checkbox("Mission Behaviors", ref missionBehaviors);
 
                 int i = 0;
                 if (screenManagerLayers)
@@ -111,18 +115,6 @@ namespace UsefulUiDebug
                     }
                     uiContext.TwoDimensionContext.DrawDebugText("");
                 }
-                if (missionBehaviors && Mission.Current != null)
-                {
-
-                    uiContext.TwoDimensionContext.DrawDebugText("Mission Behaviors:");
-                    i = 0;
-                    foreach (var mb in Mission.Current.MissionBehaviors)
-                    {
-                        uiContext.TwoDimensionContext.DrawDebugText(string.Format("{0}) {1}", i++, mb.ToString()));
-                    }
-
-                    uiContext.TwoDimensionContext.DrawDebugText("");
-                }
                 if (missionViews && Mission.Current != null)
                 {
                     uiContext.TwoDimensionContext.DrawDebugText("Mission Views:");
@@ -135,6 +127,35 @@ namespace UsefulUiDebug
                     foreach (var mb in views)
                     {
                         uiContext.TwoDimensionContext.DrawDebugText(string.Format("{0}) {1}", i++, mb.ToString()));
+                    }
+
+                    uiContext.TwoDimensionContext.DrawDebugText("");
+                }
+                if (missionLogics && Mission.Current != null)
+                {
+                    uiContext.TwoDimensionContext.DrawDebugText("Mission Logics:");
+                    i = 0;
+                    foreach (var b in Mission.Current.MissionBehaviors)
+                    {
+                        if (b is MissionLogic ml)
+                        {
+                            uiContext.TwoDimensionContext.DrawDebugText(string.Format("{0}) {1}", i++, ml.ToString()));
+                        }
+                    }
+
+                    uiContext.TwoDimensionContext.DrawDebugText("");
+                }
+                if (missionBehaviors && Mission.Current != null)
+                {
+
+                    uiContext.TwoDimensionContext.DrawDebugText("Mission Behaviors:");
+                    i = 0;
+                    foreach (var mb in Mission.Current.MissionBehaviors)
+                    {
+                        if (mb is not MissionView && mb is not MissionLogic)
+                        {
+                            uiContext.TwoDimensionContext.DrawDebugText(string.Format("{0}) {1}", i++, mb.ToString()));
+                        }
                     }
 
                     uiContext.TwoDimensionContext.DrawDebugText("");
