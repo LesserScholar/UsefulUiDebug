@@ -10,6 +10,7 @@ using TaleWorlds.GauntletUI;
 using TaleWorlds.InputSystem;
 using TaleWorlds.MountAndBlade;
 using TaleWorlds.MountAndBlade.View.Missions;
+using TaleWorlds.ScreenSystem;
 
 namespace UsefulUiDebug
 {
